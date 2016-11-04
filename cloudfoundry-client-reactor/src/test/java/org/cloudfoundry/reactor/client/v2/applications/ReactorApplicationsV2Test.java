@@ -810,6 +810,7 @@ public final class ReactorApplicationsV2Test extends AbstractClientApiTest {
             .summary(SummaryApplicationRequest.builder()
                 .applicationId("test-application-id")
                 .build())
+            .doOnSuccess(r -> r.getName())
             .as(StepVerifier::create)
             .expectNext(SummaryApplicationResponse.builder()
                 .id("2ee5ef3f-3884-4240-ab99-c747ea21663b")

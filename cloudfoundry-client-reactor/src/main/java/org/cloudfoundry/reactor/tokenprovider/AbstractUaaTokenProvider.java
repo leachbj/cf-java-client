@@ -98,12 +98,11 @@ abstract class AbstractUaaTokenProvider implements TokenProvider {
                     .header(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED)
                     .header(HttpHeaderNames.AUTHORIZATION, getAuthorizationValue())
                     .header(HttpHeaderNames.ACCEPT, HttpHeaderValues.APPLICATION_JSON)
-                    .removeTransferEncodingChunked()
+                    .disableChunkedTransfer()
                     .sendHeaders())
                 .doOnSubscribe(NetworkLogging.post(uri))
                 .compose(NetworkLogging.response(uri)))
-            .then(i -> i.receive().aggregate().toInputStream())
-            .map(JsonCodec.decode(connectionContext.getObjectMapper(), Map.class))
+            .compose(JsonCodec.decode(connectionContext.getObjectMapper(), Map.class))
             .doOnNext(r -> {
                 synchronized (this.refreshTokenMonitor) {
                     this.refreshToken = (String) r.get("refresh_token");

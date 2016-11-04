@@ -20,15 +20,37 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import okhttp3.mockwebserver.Dispatcher;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.After;
 import org.slf4j.bridge.SLF4JBridgeHandler;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
-import reactor.ipc.netty.http.HttpClient;
+import reactor.ipc.netty.http.client.HttpClient;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.KeyManagementException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -48,7 +70,7 @@ public abstract class AbstractRestTest {
         SLF4JBridgeHandler.install();
     }
 
-    private final MockWebServer mockWebServer = new MockWebServer();
+    protected final MockWebServer mockWebServer = new MockWebServer();
 
     protected final Mono<String> root = Mono.just(UriComponentsBuilder.newInstance()
         .scheme("http").host(this.mockWebServer.getHostName()).port(this.mockWebServer.getPort())

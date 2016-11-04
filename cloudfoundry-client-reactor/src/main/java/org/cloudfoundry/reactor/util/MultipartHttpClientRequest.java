@@ -25,7 +25,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.util.AsciiString;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
-import reactor.ipc.netty.http.HttpClientRequest;
+import reactor.ipc.netty.http.client.HttpClientRequest;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,14 +76,14 @@ public final class MultipartHttpClientRequest {
 
     public Mono<Void> done() {
         AsciiString boundary = generateMultipartBoundary();
-        ByteBufAllocator allocator = this.outbound.delegate().alloc();
+        ByteBufAllocator allocator = this.outbound.channel().alloc();
 
         CompositeByteBuf bodyBuf = allocator.compositeBuffer();
         this.partConsumers.forEach(partConsumer -> bodyBuf.addComponent(getPart(allocator, boundary, this.objectMapper, partConsumer)));
         bodyBuf.addComponent(getCloseDelimiter(allocator, boundary));
 
         return this.outbound
-            .removeTransferEncodingChunked()
+            .disableChunkedTransfer()
             .addHeader(CONTENT_TYPE, MULTIPART_FORM_DATA.concat(BOUNDARY_PREAMBLE).concat(boundary))
             .addHeader(CONTENT_LENGTH, String.valueOf(bodyBuf.capacity()))
             .sendOne(bodyBuf.writerIndex(bodyBuf.capacity()));

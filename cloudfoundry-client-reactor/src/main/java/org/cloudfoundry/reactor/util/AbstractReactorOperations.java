@@ -23,9 +23,9 @@ import org.cloudfoundry.reactor.ConnectionContext;
 import org.cloudfoundry.reactor.TokenProvider;
 import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
-import reactor.ipc.netty.http.HttpClientRequest;
-import reactor.ipc.netty.http.HttpClientResponse;
 import reactor.ipc.netty.http.HttpOutbound;
+import reactor.ipc.netty.http.client.HttpClientRequest;
+import reactor.ipc.netty.http.client.HttpClientResponse;
 
 import java.util.function.Function;
 
@@ -164,8 +164,7 @@ public abstract class AbstractReactorOperations {
 
     private <T> Function<Mono<HttpClientResponse>, Mono<T>> deserializedResponse(Class<T> responseType) {
         return inbound -> inbound
-            .then(i -> i.receive().aggregate().toInputStream())
-            .map(JsonCodec.decode(this.connectionContext.getObjectMapper(), responseType))
+            .compose(JsonCodec.decode(this.connectionContext.getObjectMapper(), responseType))
             .doOnError(JsonParsingException.class, e -> NetworkLogging.RESPONSE_LOGGER.debug("{}\n{}", e.getCause().getMessage(), e.getPayload()));
     }
 

@@ -63,7 +63,7 @@ public final class ReactorAuthorizations extends AbstractUaaOperations implement
     public Mono<String> authorizationCodeGrantBrowser(AuthorizeByAuthorizationCodeGrantBrowserRequest request) {
         return get(request, builder -> builder.pathSegment("oauth", "authorize").queryParam("response_type", ResponseType.CODE),
             outbound -> {
-                outbound.headers().remove(AUTHORIZATION);
+                outbound.requestHeaders().remove(AUTHORIZATION);
                 return outbound;
             })
             .map(inbound -> inbound.responseHeaders().get(LOCATION));
@@ -73,7 +73,7 @@ public final class ReactorAuthorizations extends AbstractUaaOperations implement
     public Mono<String> implicitGrantBrowser(AuthorizeByImplicitGrantBrowserRequest request) {
         return get(request, builder -> builder.pathSegment("oauth", "authorize").queryParam("response_type", ResponseType.TOKEN),
             outbound -> {
-                outbound.headers().remove(AUTHORIZATION);
+                outbound.requestHeaders().remove(AUTHORIZATION);
                 return outbound;
             })
             .map(inbound -> inbound.responseHeaders().get(LOCATION));
@@ -83,7 +83,7 @@ public final class ReactorAuthorizations extends AbstractUaaOperations implement
     public Mono<String> openIdWithAuthorizationCodeGrant(AuthorizeByOpenIdWithAuthorizationCodeGrantRequest request) {
         return get(request, builder -> builder.pathSegment("oauth", "authorize").queryParam("response_type", ResponseType.ID_TOKEN_CODE),
             outbound -> {
-                outbound.headers().remove(AUTHORIZATION);
+                outbound.requestHeaders().remove(AUTHORIZATION);
                 return outbound;
             })
             .map(inbound -> inbound.responseHeaders().get(LOCATION));
