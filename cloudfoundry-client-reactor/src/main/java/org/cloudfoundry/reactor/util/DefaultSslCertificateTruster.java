@@ -89,6 +89,7 @@ public final class DefaultSslCertificateTruster implements SslCertificateTruster
         }
 
         this.trustedHostsAndPorts.add(hostAndPort);
+        this.logger.debug("Trusted SSL Certificate for {}:{}", host, port);
     }
 
     private static KeyStore addToTrustStore(X509Certificate[] untrustedCertificates, X509TrustManager trustManager) {

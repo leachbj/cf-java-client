@@ -20,6 +20,11 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.DeserializationProblemHandler;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.Channel;
+import io.netty.channel.pool.ChannelPool;
+import io.netty.channel.pool.ChannelPoolHandler;
+import io.netty.channel.pool.FixedChannelPool;
 import org.cloudfoundry.reactor.util.DefaultSslCertificateTruster;
 import org.cloudfoundry.reactor.util.JsonCodec;
 import org.cloudfoundry.reactor.util.NetworkLogging;
@@ -32,10 +37,14 @@ import reactor.core.publisher.Mono;
 import reactor.ipc.netty.http.client.HttpClient;
 import reactor.ipc.netty.options.ClientOptions;
 
+import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,6 +79,7 @@ abstract class _DefaultConnectionContext implements ConnectionContext {
                 .option(SO_SNDBUF, SEND_BUFFER_SIZE)
                 .option(SO_RCVBUF, RECEIVE_BUFFER_SIZE);
 
+            options.poolSelector(_DefaultConnectionContext::pool);
             getKeepAlive().ifPresent(keepAlive -> options.option(SO_KEEPALIVE, keepAlive));
             getProxyConfiguration().ifPresent(c -> options.proxy(ClientOptions.Proxy.HTTP, c.getHost(), c.getPort().orElse(null), c.getUsername().orElse(null), u -> c.getPassword().orElse(null)));
             getSocketTimeout().ifPresent(socketTimeout -> options.option(SO_TIMEOUT, (int) socketTimeout.toMillis()));
@@ -77,6 +87,45 @@ abstract class _DefaultConnectionContext implements ConnectionContext {
             options.sslSupport(ssl -> getSslCertificateTruster().ifPresent(trustManager -> ssl.trustManager(new StaticTrustManagerFactory(trustManager))));
             getSslHandshakeTimeout().ifPresent(options::sslHandshakeTimeout);
         });
+    }
+
+    static final ConcurrentMap<InetSocketAddress, ChannelPool> channelPools = new ConcurrentHashMap<>(8);
+
+    static ChannelPool pool(InetSocketAddress remote,
+                            Supplier<? extends Bootstrap> bootstrap) {
+        for (; ; ) {
+            ChannelPool pool = channelPools.get(remote);
+            if (pool != null) {
+                return pool;
+            }
+//            if (log.isDebugEnabled()) {
+//                log.debug("Creating new HTTP client pool for {}", remote);
+//            }
+            //pool = new SimpleChannelPool(bootstrap);
+            Bootstrap b = bootstrap.get();
+            b.remoteAddress(remote);
+            pool = new FixedChannelPool(b,
+                new ChannelPoolHandler() {
+                    @Override
+                    public void channelReleased(Channel ch) throws Exception {
+//                        log.debug("Released: {}", ch.toString());
+                    }
+
+                    @Override
+                    public void channelAcquired(Channel ch) throws Exception {
+//                        log.debug("Acquired: {}", ch.toString());
+                    }
+
+                    @Override
+                    public void channelCreated(Channel ch) throws Exception {
+//                        log.debug("Created: {}", ch.toString());
+                    }
+                },10);
+            if (channelPools.putIfAbsent(remote, pool) == null) {
+                return pool;
+            }
+            pool.close();
+        }
     }
 
     @Override
